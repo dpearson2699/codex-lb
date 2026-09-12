@@ -1358,3 +1358,9 @@ When the effective transport is unconditionally HTTP and the Python HTTP client 
 - **WHEN** native transport, raw payload tracing or WS-eligible size/send handling requires a full payload string
 - **THEN** the required serialization remains available with current contents
 - **AND** payload changes before a later consumer are reflected without reusing stale bytes
+
+#### Scenario: Auto image-generation requests are unconditionally HTTP
+
+- **WHEN** an auto-transport Responses request includes an image-generation tool and uses the Python HTTP client with raw payload tracing inactive
+- **THEN** preparation MUST skip full-body serialization for the unused WebSocket size decision, including when the request is below the WebSocket byte budget
+- **AND** the real upstream MUST receive exactly the existing serialized HTTP body

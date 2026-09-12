@@ -1599,15 +1599,16 @@ async def test_routed_stream_tolerates_response_without_release(route: ResolvedU
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("transport", "trace_payload", "expected_preparation_dumps"),
-    [("http", False, 0), ("http", True, 1), ("auto", False, 1)],
-    ids=["no-payload-consumer", "raw-payload-trace", "auto-size-budget"],
+    ("transport", "trace_payload", "image_generation", "expected_preparation_dumps"),
+    [("http", False, False, 0), ("http", True, False, 1), ("auto", False, False, 1), ("auto", False, True, 0)],
+    ids=["no-payload-consumer", "raw-payload-trace", "auto-size-budget", "auto-image-generation"],
 )
 async def test_stream_responses_python_http_prepares_only_consumed_json(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
     transport: str,
     trace_payload: bool,
+    image_generation: bool,
     expected_preparation_dumps: int,
 ) -> None:
     # Representative full-history tool output from the Responses request shape;
@@ -1637,7 +1638,8 @@ async def test_stream_responses_python_http_prepares_only_consumed_json(
                     "name": "exec_command",
                     "parameters": {"type": "object", "properties": {"cmd": {"type": "string"}}},
                 }
-            ],
+            ]
+            + ([{"type": "image_generation"}] if image_generation else []),
         }
     )
     expected_payload = payload.to_payload()
@@ -1659,7 +1661,10 @@ async def test_stream_responses_python_http_prepares_only_consumed_json(
         }
     )
     monkeypatch.setattr(proxy_module, "get_settings", lambda: settings)
-    monkeypatch.setattr(proxy_module, "MAX_SSE_EVENT_BYTES", 2 * 1024 * 1024)
+    if not image_generation:
+        monkeypatch.setattr(proxy_module, "MAX_SSE_EVENT_BYTES", 2 * 1024 * 1024)
+    else:
+        assert len(expected_body) < proxy_module._ws_transport_payload_budget_bytes()
     monkeypatch.setattr(proxy_module, "discover_native_egress_client", lambda: None)
     # Observe only this owning module's JSON calls, leaving aiohttp's real
     # request serializer and all preparation/stream code unchanged.

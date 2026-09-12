@@ -3774,8 +3774,9 @@ async def _stream_responses_with_session(
             transport_override=upstream_stream_transport_override,
         )
     )
+    has_image_generation_tool = _payload_uses_image_generation_tool(payload_dict)
     payload_size_estimate_bytes = None
-    if transport_mode != "http":
+    if transport_mode != "http" and not (transport_mode == "auto" and has_image_generation_tool):
         payload_size_estimate_bytes = len(
             json.dumps(websocket_payload_dict, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
         )
@@ -3787,7 +3788,7 @@ async def _stream_responses_with_session(
             transport_override=upstream_stream_transport_override,
             model=payload.model,
             headers=headers,
-            has_image_generation_tool=_payload_uses_image_generation_tool(payload_dict),
+            has_image_generation_tool=has_image_generation_tool,
             payload_size_estimate_bytes=payload_size_estimate_bytes,
         )
     )
